@@ -1,0 +1,75 @@
+name: scanpy311
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Core environment
+  - python=3.11
+  - pip
+  - ca-certificates
+  - openssl
+  - libuuid
+  - _openmp_mutex=4.5
+
+  # Core scientific stack
+  - anndata=0.11.4
+  - numpy=2.2.6
+  - scipy=1.15.2
+  - pandas=2.3.2
+  - scikit-learn=1.7.2
+  - statsmodels=0.14.5
+  - numba=0.61.2
+  - matplotlib=3.10.6
+  - seaborn=0.13.2
+  - tqdm=4.67.1
+  - h5py=3.14.0
+  - patsy=1.0.1
+  - sympy=1.14.0
+
+  # Scanpy + UMAP
+  - scanpy=1.11.4
+  - umap-learn=0.5.9.post2
+  - pynndescent=0.5.13
+  - session-info2=0.2.2
+
+  # Optional ML stack
+  - pytorch=2.7.1
+  - libtorch=2.7.1
+  - jinja2=3.1.6
+  - packaging=25.0
+  - joblib=1.5.2
+  - typing-extensions=4.15.0
+
+  # Visualization & GUI (optional)
+  - pyside6=6.9.2
+  - qt6-main=6.9.2
+
+  # Fonts and plotting deps
+  - fonttools=4.59.2
+  - freetype
+  - cairo
+  - fontconfig
+  - libpng
+  - libtiff
+  - pillow
+
+  # Misc utils
+  - colorama
+  - filelock
+  - networkx
+  - natsort
+  - mpmath
+  - lerc
+  - libzlib
+  - libxml2
+  - libxslt
+  - sqlite
+  - readline
+  - tk
+  - zstd
+
+  # pip packages
+  - pip:
+      - jax==0.6.2
+      - jaxlib==0.6.2
+      - markdown==3.9
