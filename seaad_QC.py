@@ -1,5 +1,6 @@
 # QC of SEAAD (memory-safe)
 
+
 import pandas as pd
 import scanpy as sc
 import numpy as np
@@ -7,6 +8,8 @@ from scipy.stats import median_abs_deviation
 import os, time, gc
 import matplotlib.pyplot as plt
 from scipy import sparse
+
+gc.collect()
 
 sc.settings._vector_friendly = True
 sc.settings.autosave = False
@@ -44,11 +47,11 @@ if "raw" in adata.uns:
 adata.uns.clear()
 
 # --- Preserve only the UMI layer (if exists) ---
-if "UMI" in adata.layers:
+if "UMIs" in adata.layers:
     print(f"Keeping UMI layer, removing others: {list(adata.layers.keys())}")
-    umi_layer = adata.layers["UMI"]
+    umi_layer = adata.layers["UMIs"]
     adata.layers.clear()
-    adata.layers["UMI"] = umi_layer
+    adata.layers["UMIs"] = umi_layer
     # Ensure .X contains the raw UMI counts (optional but recommended)
     adata.X = umi_layer
 else:
@@ -106,6 +109,9 @@ del counts_before, counts_after, keep_ids; gc.collect()
 gc.collect()
 
 print("~~~~~~~~~~~~~~~~~~~~ 3 - Low quality cells")
+if adata.is_view:
+    adata = adata.copy()
+
 # Annotate feature categories
 adata.var["mt"]   = adata.var_names.str.startswith("MT-")
 adata.var["ribo"] = adata.var_names.str.startswith(("RPS", "RPL"))
@@ -113,7 +119,7 @@ adata.var["hb"]   = adata.var_names.str.contains("^HB(?!P)", regex=True)
 
 # Cheaper QC: remove percent_top to avoid costly ranking over 1M cells
 sc.pp.calculate_qc_metrics(
-    adata, qc_vars=["mt", "ribo", "hb"], inplace=True, log1p=True
+    adata, qc_vars=["mt", "ribo", "hb"], inplace=True, log1p=True, percent_top=None
 )
 
 # Outlier helpers (MADS on obs metrics only—doesn't touch X)
