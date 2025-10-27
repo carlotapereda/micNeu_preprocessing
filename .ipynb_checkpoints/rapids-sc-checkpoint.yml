@@ -1,0 +1,5 @@
+name: rapids-sc
+channels:
+  - conda-forge
+  - defaults
+prefix: /home/ubuntu/miniconda3/envs/rapids-sc
