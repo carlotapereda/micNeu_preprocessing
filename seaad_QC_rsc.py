@@ -12,7 +12,7 @@ import cudf
 data_dir = "/mnt/data/seaad_dlpfc"
 os.makedirs(data_dir, exist_ok=True)
 
-rmm.reinitialize(managed_memory=False, pool_allocator=True, devices=[0,1,2,3])
+rmm.reinitialize(managed_memory=True, pool_allocator=True, devices=[0,1,2,3])
 cp.cuda.set_allocator(rmm_cupy_allocator)
 gc.collect()
 
@@ -35,6 +35,10 @@ print(obs.shape, var.shape)
 X_dask = da.from_zarr(root["X"]) 
 adata1 = ad.AnnData(X=X_dask, obs=obs, var=var)
 
+#ensure unique indices (prevents that “non-unique indices” part of the warning)
+adata1.obs_names_make_unique()
+adata1.var_names_make_unique()
+
 # --- move to GPU (in-place for this RAPIDS version)
 rsc.get.anndata_to_GPU(adata1)
 adata = adata1
@@ -44,7 +48,7 @@ gc.collect()
 
 # --- Filter APOE directly on GPU ---
 print("~~~~~~~~~~~~~~~~~~~ 1 - filtering by APOE (on GPU)")
-adata = adata[adata.obs['APOE Genotype'].isin(['3/3', '3/4', '4/4']), :]
+adata = adata[adata.obs['APOE Genotype'].isin(['3/3', '3/4', '4/4']), :].copy()
 
 
 print("~~~~~~~~~~~~~~~~~~~~ 2 - checking number of cells per patient")
@@ -68,7 +72,7 @@ print("Saved:", out_path)
 
 # Filter ≥1000 cells/patient
 keep_ids = counts_before.index[counts_before >= 1000]
-adata = adata[adata.obs[patientIDcolumnName].isin(keep_ids), :]
+adata = adata[adata.obs[patientIDcolumnName].isin(keep_ids), :].copy()
 gc.collect()
 
 # Recompute counts per patient after filter
@@ -103,21 +107,48 @@ rsc.pp.flag_gene_family(adata, gene_family_name="hb", gene_family_prefix="HB")
 # Make QC happy: 1 column block, small row blocks to fit GPU memory
 # 512 rows × 36,601 genes × 4 bytes ≈ ~71–75 MB per block on GPU
 # If you still OOM, try 256. If you have plenty of headroom, 1024 is fine.
-target_row_chunk = 512
-adata.X = adata.X.rechunk((target_row_chunk, -1))
+adata.X = adata.X.rechunk((512, -1))
 
 # --- GPU QC metrics ---
 rsc.pp.calculate_qc_metrics(adata, qc_vars=["mt","ribo","hb"])
 print("QC metrics computed on GPU")
 
 # --- Filter low-quality cells ---
-adata = adata[adata.obs["n_genes_by_counts"] > 200, :]
-adata = adata[adata.obs["pct_counts_mt"] < 8, :]
+qc_mask = (adata.obs["n_genes_by_counts"] > 200) & (adata.obs["pct_counts_mt"] < 8)
+adata = adata[qc_mask, :].copy()
 print(f"Number of cells after filtering low-quality: {adata.n_obs}")
 
-print("~~~~~~~~~~~~~~~~~~~~ 4 - Basic gene/cell filters")
-rsc.pp.filter_genes(adata, min_cells=10)
-print(f"After gene filtering: {adata.shape}")
+print("~~~~~~~~~~~~~~~~~~~~ 4 - Basic gene/cell filters (GPU-safe)")
+
+# Keep a single gene chunk but shrink row chunks to reduce per-block footprint
+# Try 256 first; if you're very memory-constrained, use 128.
+adata.X = adata.X.rechunk((128, -1))  # or (64, -1) if you still OOM
+print("Chunks before filter_genes:", adata.X.chunks)
+
+# Free any cached GPU memory
+try:
+    cp.get_default_memory_pool().free_all_blocks()
+except Exception:
+    pass
+
+# Temporarily bypass RMM for CuPy allocations during filter_genes
+_prev_alloc = None
+try:
+    _prev_alloc = cp.cuda.get_allocator()
+    cp.cuda.set_allocator(None)  # CuPy uses its own pool (no RMM pool ceiling)
+
+    # Do the gene filter on GPU
+    rsc.pp.filter_genes(adata, min_cells=10)
+
+finally:
+    # Restore whichever allocator was previously set
+    try:
+        cp.cuda.set_allocator(_prev_alloc)
+    except Exception:
+        pass
+
+print(f"After gene filtering: {adata.n_obs} cells × {adata.n_vars} genes")
+cp.get_default_memory_pool().free_all_blocks()
 gc.collect()
 
 # Save the two QC scatter plots
@@ -254,7 +285,7 @@ if isinstance(adata.X, da.Array):
     write_chunks = tuple(c[0] for c in adata.X.chunks)  # (rows_chunk, cols_chunk)
 else:
     # Fallback if X is a single NumPy array (AnnData will tile it internally)
-    write_chunks = (5000, 2000)
+    write_chunks = (2000, 1000)
 
 print(f"Writing safely to {out_file} with chunks={write_chunks} ...")
 
