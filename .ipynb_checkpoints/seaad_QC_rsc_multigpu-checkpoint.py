@@ -45,7 +45,7 @@ os.environ.setdefault("UCX_SOCKADDR_TLS_PRIORITY", "tcp")
 # Global helper: safe block loader for CSR-backed .h5ad
 # ==========================================================
 def load_block(file_path, start, end):
-    """Load sparse rows [start:end) from a CSR-backed h5ad into dense float16."""
+    """Load sparse rows [start:end) from a CSR-backed h5ad into dense float32."""
     with h5py.File(file_path, "r") as h5:
         X_grp = h5["X"]
         indptr  = X_grp["indptr"]
@@ -62,7 +62,7 @@ def load_block(file_path, start, end):
             shape=(end - start, shape[1])
         )
         # Use float16 to reduce VRAM pressure
-        return csr.toarray().astype(np.float16)
+        return csr.toarray().astype(np.float32)
 
 # ==========================================================
 # Main
@@ -108,7 +108,8 @@ def main():
     try:
         # Dense HDF5 dataset path
         _ = X_data.ndim
-        X_dask = da.from_array(X_data, chunks=(ROW_CHUNK, adata_b.n_vars)).astype(np.float16)
+        X_dask = da.from_array(X_data, chunks=(ROW_CHUNK, adata_b.n_vars)).astype(np.float32)
+
     except AttributeError:
         # Sparse CSR-backed dataset
         print("⚠️ Backed matrix is sparse (_CSRDataset). Streaming into Dask…")
@@ -118,7 +119,7 @@ def main():
             da.from_delayed(
                 dask.delayed(load_block)(H5AD_IN, i, min(i + ROW_CHUNK, shape[0])),
                 shape=(min(ROW_CHUNK, shape[0] - i), shape[1]),
-                dtype=np.float16
+                dtype=np.float32
             )
             for i in range(0, shape[0], ROW_CHUNK)
         ])
@@ -159,13 +160,11 @@ def main():
     print("🤖 Running Scrublet (multi-GPU)…")
     rsc.pp.scrublet(
         adata,
-        layer=None,  # we’re using X
         expected_doublet_rate=EXPECTED_RATE,
         sim_doublet_ratio=SIM_RATIO,
         n_prin_comps=N_PCS,
         log_transform=False,
         random_state=0,
-        batch_size=50_000,   # stream to lower VRAM
     )
     print("✅ Scrublet complete.")
     print(adata.obs[["doublet_score", "predicted_doublet"]].head())
