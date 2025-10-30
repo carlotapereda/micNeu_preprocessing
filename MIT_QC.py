@@ -8,8 +8,7 @@
 import pandas as pd
 import scanpy as sc
 import matplotlib.pyplot as plt
-
-
+import os
 
 ##################################
 # LOAD DATA

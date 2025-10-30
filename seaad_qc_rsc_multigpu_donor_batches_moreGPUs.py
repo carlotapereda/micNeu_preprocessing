@@ -3,48 +3,26 @@
 # Multi-GPU QC + per-Donor Scrublet (RAPIDS) with lazy H5AD streaming
 # ENV: rapids_singlecell
 
-import os
-
-# --- UCX: disable GPU peer-to-peer (g5.24xlarge is multi-socket, no NVLink) ---
-os.environ["UCX_TLS"] = "tcp,cuda_copy"
-os.environ["UCX_NET_DEVICES"] = "all"
-os.environ["UCX_MEMTYPE_CACHE"] = "n"
-os.environ["UCX_RNDV_SCHEME"] = "get_zcopy"
-os.environ["UCX_MAX_RNDV_RAILS"] = "1"
-os.environ["UCX_SOCKADDR_TLS_PRIORITY"] = "tcp"
-
-# --- Dask spill/comm tuning ---
-os.environ["DASK_RMM_POOL_SIZE"] = "18GB"
-os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__TARGET"] = "0.70"
-os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__SPILL"] = "0.75"
-os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__PAUSE"] = "0.85"
-os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__TERMINATE"] = "0.95"
-os.environ["DASK_DISTRIBUTED__COMM__RETRY__COUNT"] = "3"
-
-# --- Core imports ---
-import gc, time, warnings
+import os, gc, time, warnings
 import numpy as np
 import pandas as pd
+
 import anndata as ad
 import scanpy as sc
 import h5py
+
 import dask
 import dask.array as da
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
+
 import cupy as cp
+from cupyx import scatter_add
 from cupyx.scipy import sparse as cpx
+
 import rapids_singlecell as rsc
 from rmm.allocators.cupy import rmm_cupy_allocator
 import rmm
-
-# --- Initialize RMM pool before Dask starts ---
-rmm.reinitialize(
-    pool_allocator=True,
-    managed_memory=True,
-    initial_pool_size=4 << 30,  # 4 GB per GPU pool
-)
-cp.cuda.set_allocator(rmm_cupy_allocator)
 
 # -----------------------
 # Configuration
@@ -53,6 +31,58 @@ DATA_DIR   = "/mnt/data/seaad_dlpfc"
 H5AD_IN    = f"{DATA_DIR}/SEAAD_A9_RNAseq_all-nuclei.2024-02-13.h5ad"
 OUT_H5AD   = f"{DATA_DIR}/SEAAD_qc_scrublet_singlets.h5ad"
 OUT_ZARR   = f"{DATA_DIR}/SEAAD_qc_singlets.zarr"
+
+DONOR_KEY        = "Donor ID"
+ROW_CHUNK        = 4000
+TEST_MAX_CELLS   = None      # <-- run on 50k cells only
+SCRUBLET_PCS     = 15
+SCRUBLET_SIMR    = 2.0
+SCRUBLET_RATE    = 0.045
+PER_DONOR_MAX    = 20000
+QC_MIN_GENES     = 200
+QC_MAX_PCT_MT    = 8.0
+KEEP_GENES_MIN_CELLS = 10
+DASK_DASHBOARD   = ":0"
+N_WORKERS        = 8
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# -----------------------
+# Dask / RMM memory tuning
+# -----------------------
+os.environ["DASK_RMM_POOL_SIZE"] = "22GB"
+os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__TARGET"] = "0.70"
+os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__SPILL"] = "0.75"
+os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__PAUSE"] = "0.85"
+os.environ["DASK_DISTRIBUTED__WORKER__MEMORY__TERMINATE"] = "0.95"
+
+def start_cluster():
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(8))
+    try:
+        cluster = LocalCUDACluster(
+            n_workers=N_WORKERS,
+            threads_per_worker=1,
+            protocol="ucx",
+            rmm_pool_size="22GB",
+            device_memory_limit="0.9",
+            local_directory=os.path.join(DATA_DIR, "dask-tmp"),
+            dashboard_address=DASK_DASHBOARD,
+        )
+    except Exception:
+        cluster = LocalCUDACluster(
+            n_workers=N_WORKERS,
+            threads_per_worker=1,
+            protocol="tcp",
+            rmm_pool_size="22GB",
+            device_memory_limit="0.9",
+            local_directory=os.path.join(DATA_DIR, "dask-tmp"),
+            dashboard_address=DASK_DASHBOARD,
+        )
+    client = Client(cluster)
+    print("✅ Dask dashboard:", client.dashboard_link)
+    rmm.reinitialize(managed_memory=True, pool_allocator=True, devices=list(range(8)))
+    cp.cuda.set_allocator(rmm_cupy_allocator)
+    return cluster, client
 
 def wrap_h5ad_x_as_dask(h5ad_path, row_chunk, limit_rows=None):
     adata_b = sc.read_h5ad(h5ad_path, backed="r")

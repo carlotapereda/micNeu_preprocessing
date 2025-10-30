@@ -3,19 +3,18 @@ import anndata as ad
 from pathlib import Path
 import gzip
 import shutil
-import zarr
 from concurrent.futures import ThreadPoolExecutor
 
 # ----------------------------
 # Paths
 # ----------------------------
 input_dir = Path("/mnt/data/dejag_fujitaNatGen2025")
-output_zarr = Path("dejag_combined.zarr")
+output_h5ad = Path("dejag_combined.h5ad")
 
-# Remove existing Zarr if re-running
-if output_zarr.exists():
-    print("🧹 Removing existing Zarr store...")
-    shutil.rmtree(output_zarr)
+# Remove existing file if re-running
+if output_h5ad.exists():
+    print("🧹 Removing existing H5AD file...")
+    output_h5ad.unlink()
 
 # ----------------------------
 # Files
@@ -34,11 +33,31 @@ def read_one(mtx_file):
     print(f"🔄 Reading {prefix}")
     adata = sc.read_mtx(mtx_file).T  # transpose to cells × genes
 
-    # Read compressed barcodes/features efficiently
     with gzip.open(features, "rt") as f:
         adata.var_names = [line.strip().split("\t")[0] for line in f]
     with gzip.open(barcodes, "rt") as f:
-        adata.obs_names = [line.strip() for line in f]
+        barcodes_list = [line.strip() for line in f]
+        # prepend sample name to make them unique
+        adata.obs_names = [f"{prefix}_{bc}" for bc in barcodes_list]
+
+    adata.obs["sample"] = prefix
+    print(f"✅ Done {prefix} | shape={adata.shape}")
+    return adata
+    
+def read_one(mtx_file):
+    prefix = mtx_file.name.replace(".matrix.mtx.gz", "")
+    barcodes = input_dir / f"{prefix}.barcodes.tsv.gz"
+    features = input_dir / f"{prefix}.features.tsv.gz"
+
+    print(f"🔄 Reading {prefix}")
+    adata = sc.read_mtx(mtx_file).T  # transpose to cells × genes
+
+    with gzip.open(features, "rt") as f:
+        adata.var_names = [line.strip().split("\t")[0] for line in f]
+    with gzip.open(barcodes, "rt") as f:
+        barcodes_list = [line.strip() for line in f]
+        # prepend sample name to make them unique
+        adata.obs_names = [f"{prefix}_{bc}" for bc in barcodes_list]
 
     adata.obs["sample"] = prefix
     print(f"✅ Done {prefix} | shape={adata.shape}")
@@ -48,7 +67,7 @@ def read_one(mtx_file):
 # Step 1–3: Process in batches
 # ----------------------------
 batch_size = 25
-compressor = zarr.Blosc(cname="zstd", clevel=5, shuffle=2)
+all_batches = []
 
 for i in range(0, len(mtx_files), batch_size):
     subset = mtx_files[i:i + batch_size]
@@ -58,26 +77,23 @@ for i in range(0, len(mtx_files), batch_size):
     with ThreadPoolExecutor(max_workers=8) as ex:
         adatas = list(ex.map(read_one, subset))
 
-    # Concatenate in memory (fits easily on r5.16xlarge)
+    # Concatenate in memory
     adata_batch = ad.concat(adatas, label="sample", merge="same")
-
-    # Write batch to Zarr (append mode)
-    print(f"💾 Writing batch {i // batch_size + 1} to {output_zarr}")
-    adata_batch.write_zarr(output_zarr, mode="a", compressor=compressor)
+    all_batches.append(adata_batch)
 
     # Free memory
-    del adatas, adata_batch
-
-print("✅ All batches written to Zarr store")
+    del adatas
 
 # ----------------------------
-# Step 4: Lazy merge on-disk
+# Step 4: Combine all batches
 # ----------------------------
-print("🔗 Combining all subgroups lazily...")
-root = zarr.open_group(output_zarr, mode="r")
-adatas = [ad.read_zarr(f"{output_zarr}/{g}", backed='r') for g in root.group_keys()]
+print("🔗 Combining all batches...")
+adata_combined = ad.concat(all_batches, label="sample", merge="same")
 
-adata_combined = ad.concat(adatas, label="sample", merge="same")
-adata_combined.write_zarr(output_zarr, mode="w", compressor=compressor)
+# ----------------------------
+# Step 5: Save compressed H5AD
+# ----------------------------
+print(f"💾 Saving combined dataset to {output_h5ad}")
+adata_combined.write_h5ad(output_h5ad, compression="gzip")
 
-print("🎉 Combined Zarr successfully saved at", output_zarr)
+print(f"🎉 Combined H5AD successfully saved at {output_h5ad}")
