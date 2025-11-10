@@ -5,44 +5,60 @@ import scanpy as sc
 import matplotlib.pyplot as plt
 import os
 
-print("🚀 Starting SEAAD APOE subset pipeline...")
+print("🚀 Starting Fujita APOE subset pipeline...")
 
 # -------------------------------
 # STEP 1: Load metadata only (backed mode)
 # -------------------------------
 print("📂 Opening AnnData in backed (read-only) mode...")
-adata = sc.read_h5ad('adata_with_UMIs_as_X.h5ad', backed='r')
+adata = sc.read_h5ad('dejag_combined.h5ad', backed='r')
+adata.obs_names_make_unique()
 print(f"✅ Opened AnnData in backed mode with {adata.n_obs:,} cells")
+
+# -------------------------------
+# STEP 2: Load metadata tables
+# -------------------------------
+print("🧬 Loading metadata files...")
+cell_annotation = pd.read_csv("cell-annotation.full-atlas.csv").set_index("cell")
+ROSMAP = pd.read_csv("ROSMAP_clinical.csv").set_index("individualID")
+print(f"✅ cell_annotation: {cell_annotation.shape}, ROSMAP: {ROSMAP.shape}")
+
+cell_annotation_clean = cell_annotation.drop(columns=["batch", "state"], errors="ignore")
+
+print("🔗 Merging metadata to determine APOE genotype subset...")
+obs_meta = adata.obs.join(cell_annotation_clean, how="left", rsuffix="_anno")
+obs_meta = obs_meta.join(ROSMAP, on="individualID", how="left")
 
 # -------------------------------
 # STEP 3: Determine APOE subset
 # -------------------------------
 print("🧩 Filtering barcodes with APOE 33/34/44...")
-obs_meta = adata.obs.copy()  # this materializes the DataFrame
-adata.file.close()
 keep_barcodes = obs_meta.loc[
-    obs_meta['APOE Genotype'].isin(['4/4', '3/3', '3/4'])
+    obs_meta['apoe_genotype'].isin([33, 34, 44])
 ].index.tolist()
 print(f"✅ Found {len(keep_barcodes):,} barcodes to keep")
-
 
 # -------------------------------
 # STEP 4: Load only that subset into memory
 # -------------------------------
 print("📥 Loading only APOE subset into memory...")
-adata_subset = sc.read_h5ad('adata_with_UMIs_as_X.h5ad', backed=None)[keep_barcodes, :].copy()
-adata_subset.obs_names_make_unique()
-
+adata_subset = sc.read_h5ad('dejag_combined.h5ad', backed=None)[keep_barcodes, :].copy()
 print(f"✅ Loaded APOE subset: {adata_subset.shape}")
+
+# -------------------------------
+# STEP 5: Add merged metadata
+# -------------------------------
+adata_subset.obs = obs_meta.loc[keep_barcodes].copy()
+print(f"✅ Added merged metadata. obs shape: {adata_subset.obs.shape}")
 
 # -------------------------------
 # STEP 6: Filter patients with <1000 cells
 # -------------------------------
 print("📊 Filtering patients with <1000 cells...")
-adata_subset.obs['Donor ID'] = adata_subset.obs['Donor ID'].astype(str)
-cluster_counts = adata_subset.obs['Donor ID'].value_counts()
+adata_subset.obs['projid'] = adata_subset.obs['projid'].astype(str)
+cluster_counts = adata_subset.obs['projid'].value_counts()
 keep_patients = cluster_counts.index[cluster_counts >= 1000]
-filtered_adata = adata_subset[adata_subset.obs['Donor ID'].isin(keep_patients)].copy()
+filtered_adata = adata_subset[adata_subset.obs['projid'].isin(keep_patients)].copy()
 print(f"✅ Filtered down to {len(keep_patients)} patients, shape: {filtered_adata.shape}")
 
 # -------------------------------
@@ -93,7 +109,7 @@ sc.pl.scatter(
     x="total_counts",
     y="n_genes_by_counts",
     color="pct_counts_mt",
-    save="seaad_qc_scatter_postmtfilter.pdf"
+    save="_qc_scatter_postmtfilter.pdf"
 )
 print("✅ Saved QC scatter plot (_qc_scatter_postmtfilter.pdf)")
 
@@ -113,7 +129,7 @@ print(f"✅ Post-QC shape: {filtered_adata.shape}")
 # STEP 10: SAVE
 # -------------------------------
 print("💾 Saving filtered AnnData object...")
-filtered_adata.write_h5ad('seaad_filtered_apoe.h5ad')
-print("✅ Saved: seaad_filtered_apoe")
+filtered_adata.write_h5ad('fujita_filtered.apoe.h5ad')
+print("✅ Saved: fujita_filtered.apoe.h5ad")
 
 print("🎉 Done! Only APOE 33/34/44 subset loaded and quality-filtered.")
