@@ -4,7 +4,7 @@
 # Example:
 # python plot_boxplot_from_merged.py \
 #   --h5ad merged_allcells.h5ad \
-#   --num-col percent_mt \
+#   --num-col pct_counts_mt \
 #   --cat-col celltypist_simplified \
 #   --outdir plots_boxplots
 
