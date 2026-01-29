@@ -1,0 +1,8 @@
+# Ignore all .h5ad files anywhere in the repo
+*.h5ad
+
+.ipynb_checkpoints/
+*.csv
+integration_scANVI/
+nicheformer.ckpt
+*.pdf

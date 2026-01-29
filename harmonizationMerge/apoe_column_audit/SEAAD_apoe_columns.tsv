@@ -1,0 +1,2 @@
+dataset	column	non_null	null	unique	top_raw_values	normalized_apoe	e4_dosage_counts
+SEAAD	APOE Genotype	1084555	0	3	3/3=764,652; 3/4=259,437; 4/4=60,466	E3/E3=764,652; E3/E4=259,437; E4/E4=60,466	0=764,652; 1=259,437; 2=60,466

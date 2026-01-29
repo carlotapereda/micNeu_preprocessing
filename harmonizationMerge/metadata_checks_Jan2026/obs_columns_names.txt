@@ -1,0 +1,333 @@
+MERGED: Found 57 obs columns:
+
+dataset: category
+projid: object
+study: object
+individualID: object
+age_death: float64
+pmi: float64
+educ_years: float64
+hispanic_latino: object
+race: object
+species: object
+brain_region: object
+sex_raw: object
+sex: category
+apoe_genotype_std: category
+apoe_e4_dosage: Int64
+apoe_e4_carrier: bool
+braak_stage: Int64
+braak_label: category
+cerad_score_1_4: Int64
+cerad_score_0_3: Int64
+cerad_label: category
+AD_status: object
+cogdx: object
+mmse: float64
+moca: float64
+casi: float64
+n_genes_by_counts: int64
+log1p_n_genes_by_counts: float64
+total_counts: float32
+log1p_total_counts: float32
+pct_counts_in_top_20_genes: float64
+total_counts_mt: float32
+log1p_total_counts_mt: float32
+pct_counts_mt: float32
+total_counts_ribo: float32
+log1p_total_counts_ribo: float32
+pct_counts_ribo: float32
+total_counts_hb: float32
+log1p_total_counts_hb: float32
+pct_counts_hb: float32
+n_genes: int64
+doublet_scores: float64
+predicted_doublets: bool
+doublet_label: float64
+outlier: bool
+mt_outlier: bool
+chemistry: object
+batch: object
+harmonized: bool
+celltypist_cell_label: object
+celltypist_conf_score: float64
+Class: category
+Class confidence: float64
+Subclass: category
+Subclass confidence: float64
+Supertype: category
+Supertype confidence: float64
+
+------------------------------------------------------------
+
+MIT: Found 53 obs columns:
+
+projid: category
+individualID_x: category
+cell_type_high_resolution: category
+major_cell_type: category
+batch: category
+chemistry: category
+individualID_y: category
+individualID: category
+individualIdSource: category
+species: category
+sex: category
+subject: category
+Study: category
+msex: float64
+educ: float64
+race: float64
+spanish: float64
+apoe_genotype: float64
+age_at_visit_max: category
+age_first_ad_dx: category
+age_death: category
+cts_mmse30_first_ad_dx: float64
+cts_mmse30_lv: float64
+pmi: float64
+braaksc: float64
+ceradsc: float64
+cogdx: float64
+dcfdx_lv: float64
+n_genes_by_counts: int64
+log1p_n_genes_by_counts: float64
+total_counts: float32
+log1p_total_counts: float32
+pct_counts_in_top_20_genes: float64
+total_counts_mt: float32
+log1p_total_counts_mt: float32
+pct_counts_mt: float32
+total_counts_ribo: float32
+log1p_total_counts_ribo: float32
+pct_counts_ribo: float32
+total_counts_hb: float32
+log1p_total_counts_hb: float32
+pct_counts_hb: float32
+outlier: bool
+mt_outlier: bool
+n_genes: int64
+doublet_scores: float64
+predicted_doublets: bool
+predicted_labels: category
+over_clustering: category
+majority_voting: category
+conf_score: float64
+celltypist_cell_label: category
+celltypist_conf_score: float64
+
+------------------------------------------------------------
+
+SEAAD: Found 155 obs columns:
+
+APOE Genotype: category
+ATAC_Confidently_mapped_read_pairs: float64
+ATAC_Fraction_of_genome_in_peaks: float64
+ATAC_Fraction_of_high_quality_fragments_in_cells: float64
+ATAC_Fraction_of_high_quality_fragments_overlapping_TSS: float64
+ATAC_Fraction_of_high_quality_fragments_overlapping_peaks: float64
+ATAC_Fraction_of_transposition_events_in_peaks_in_cells: float64
+ATAC_Mean_raw_read_pairs_per_cell: float64
+ATAC_Median_high_quality_fragments_per_cell: float64
+ATAC_Non-nuclear_read_pairs: float64
+ATAC_Number_of_peaks: float64
+ATAC_Percent_duplicates: float64
+ATAC_Q30_bases_in_barcode: float64
+ATAC_Q30_bases_in_read_1: float64
+ATAC_Q30_bases_in_read_2: float64
+ATAC_Q30_bases_in_sample_index_i1: float64
+ATAC_Sequenced_read_pairs: float64
+ATAC_TSS_enrichment_score: float64
+ATAC_Unmapped_read_pairs: float64
+ATAC_Valid_barcodes: float64
+Age at Death: float64
+Arteriolosclerosis: category
+Atherosclerosis: category
+Braak: category
+Brain Region: category
+Brain pH: category
+CERAD score: category
+Class: category
+Class confidence: float64
+Cognitive Status: category
+Donor ID: category
+Doublet score: float64
+Fraction mitochondrial UMIs: float32
+Fresh Brain Weight: category
+GEX_Estimated_number_of_cells: float64
+GEX_Fraction_of_transcriptomic_reads_in_cells: float64
+GEX_Mean_raw_reads_per_cell: float64
+GEX_Median_UMI_counts_per_cell: float64
+GEX_Median_genes_per_cell: float64
+GEX_Percent_duplicates: float64
+GEX_Q30_bases_in_UMI: float64
+GEX_Q30_bases_in_barcode: float64
+GEX_Q30_bases_in_read_2: float64
+GEX_Q30_bases_in_sample_index_i1: float64
+GEX_Q30_bases_in_sample_index_i2: float64
+GEX_Reads_mapped_antisense_to_gene: float64
+GEX_Reads_mapped_confidently_to_exonic_regions: float64
+GEX_Reads_mapped_confidently_to_genome: float64
+GEX_Reads_mapped_confidently_to_intergenic_regions: float64
+GEX_Reads_mapped_confidently_to_intronic_regions: float64
+GEX_Reads_mapped_confidently_to_transcriptome: float64
+GEX_Reads_mapped_to_genome: float64
+GEX_Reads_with_TSO: float64
+GEX_Sequenced_read_pairs: float64
+GEX_Total_genes_detected: float64
+GEX_Valid_UMIs: float64
+GEX_Valid_barcodes: float64
+GEX_number_of_reads: float64
+GEX_sequencing_saturation: float64
+Gender: category
+Genes detected: int64
+Genome: category
+Highest Lewy Body Disease: category
+Highest level of education: category
+Interval from last CASI in months: category
+Interval from last MMSE in months: category
+Interval from last MOCA in months: category
+LATE: category
+Last CASI Score: category
+Last MMSE Score: category
+Last MOCA Score: category
+Multiome_Feature_linkages_detected: float64
+Multiome_Linked_genes: float64
+Multiome_Linked_peaks: float64
+Neurotypical reference: category
+Number of UMIs: float64
+Number of mapped reads: float64
+Number of multimapped reads: float64
+Number of reads: float64
+Number of unmapped reads: float64
+Organism: category
+Overall AD neuropathological Change: category
+Overall CAA Score: category
+PMI: category
+Primary Study Name: category
+Race (choice=Asian): category
+Race (choice=Native Hawaiian or Pacific Islander): category
+Race (choice=Other): category
+Race (choice=Unknown or unreported): category
+Race (choice=White): category
+Secondary Study Name: category
+Severely Affected Donor: category
+Sex: category
+Subclass: category
+Subclass confidence: float64
+Supertype: category
+Supertype (non-expanded): category
+Supertype confidence: float64
+Thal: category
+Total Microinfarcts (not observed grossly): category
+Total microinfarcts in screening sections: category
+Used in analysis: bool
+Years of education: category
+alignment: category
+amplified_quantity_ng: float64
+ar_id: int64
+avg_size_bp: float64
+batch_vendor_name: category
+bc: category
+cell_prep_type: category
+exp_component_name: object
+exp_component_vendor_name: category
+expc_cell_capture: int64
+experiment_component_failed: bool
+facs_population_plan: category
+library_input_ng: float64
+library_prep: category
+library_prep_pass_fail: category
+load_name: category
+method: category
+pcr_cycles: int64
+percent_cdna_longer_than_400bp: float64
+quantification_fmol: float64
+r1_index: category
+rna_amplification: category
+rna_amplification_pass_fail: category
+sample_id: object
+sample_name: category
+sample_quantity_count: int64
+specify other race: category
+n_genes_by_counts: int64
+log1p_n_genes_by_counts: float64
+total_counts: float32
+log1p_total_counts: float32
+pct_counts_in_top_20_genes: float64
+total_counts_mt: float32
+log1p_total_counts_mt: float32
+pct_counts_mt: float32
+total_counts_ribo: float32
+log1p_total_counts_ribo: float32
+pct_counts_ribo: float32
+total_counts_hb: float32
+log1p_total_counts_hb: float32
+pct_counts_hb: float32
+outlier: bool
+mt_outlier: bool
+n_genes: int64
+doublet_scores: float64
+predicted_doublets: bool
+predicted_labels: category
+over_clustering: category
+majority_voting: category
+conf_score: float64
+celltypist_cell_label: category
+celltypist_conf_score: float64
+
+------------------------------------------------------------
+
+FUJITA: Found 48 obs columns:
+
+sample: category
+Unnamed: 0: float64
+grouping.by: category
+cell.type: category
+individualID: category
+seurat.object: category
+projid: category
+Study: category
+msex: float64
+educ: float64
+race: float64
+spanish: float64
+apoe_genotype: float64
+age_at_visit_max: category
+age_first_ad_dx: category
+age_death: category
+cts_mmse30_first_ad_dx: float64
+cts_mmse30_lv: float64
+pmi: float64
+braaksc: float64
+ceradsc: float64
+cogdx: float64
+dcfdx_lv: float64
+n_genes_by_counts: int64
+log1p_n_genes_by_counts: float64
+total_counts: float32
+log1p_total_counts: float32
+pct_counts_in_top_20_genes: float64
+total_counts_mt: float32
+log1p_total_counts_mt: float32
+pct_counts_mt: float32
+total_counts_ribo: float32
+log1p_total_counts_ribo: float32
+pct_counts_ribo: float32
+total_counts_hb: float32
+log1p_total_counts_hb: float32
+pct_counts_hb: float32
+outlier: bool
+mt_outlier: bool
+n_genes: int64
+doublet_scores: float64
+predicted_doublets: bool
+predicted_labels: category
+over_clustering: category
+majority_voting: category
+conf_score: float64
+celltypist_cell_label: category
+celltypist_conf_score: float64
+
+------------------------------------------------------------
+

@@ -132,14 +132,14 @@ def main():
     print("✅ On GPU(s)")
 
     print("🧪 Running QC metrics …")
-    rsc.pp.flag_gene_family(adata=adata, gene_family_name="mt",   gene_family_prefix="MT-")
-    rsc.pp.flag_gene_family(adata=adata, gene_family_name="ribo", gene_family_prefix="RPS")
-    rsc.pp.flag_gene_family(adata=adata, gene_family_name="hb",   gene_family_prefix="HB")
+    #rsc.pp.flag_gene_family(adata=adata, gene_family_name="mt",   gene_family_prefix="MT-")
+    #rsc.pp.flag_gene_family(adata=adata, gene_family_name="ribo", gene_family_prefix="RPS")
+    #rsc.pp.flag_gene_family(adata=adata, gene_family_name="hb",   gene_family_prefix="HB")
 
-    rsc.pp.calculate_qc_metrics(adata, qc_vars=["mt","ribo","hb"])
-    adata = adata[(adata.obs["n_genes_by_counts"] > 200) &
-                  (adata.obs["pct_counts_mt"] < 8), :].copy()
-    rsc.pp.filter_genes(adata, min_cells=10)
+    #rsc.pp.calculate_qc_metrics(adata, qc_vars=["mt","ribo","hb"])
+    #adata = adata[(adata.obs["n_genes_by_counts"] > 200) &
+    #              (adata.obs["pct_counts_mt"] < 8), :].copy()
+    #rsc.pp.filter_genes(adata, min_cells=10)
     print(f"✅ After QC: {adata.n_obs:,} cells × {adata.n_vars:,} genes")
 
     print("🤖 Running Scrublet (multi-GPU)…")
@@ -148,8 +148,7 @@ def main():
         expected_doublet_rate=EXPECTED_RATE,
         sim_doublet_ratio=SIM_RATIO,
         n_prin_comps=N_PCS,
-        log_transform=False,
-        random_state=0
+        log_transform=False
     )
     print("✅ Scrublet complete.")
     print(adata.obs[["doublet_score", "predicted_doublet"]].head())

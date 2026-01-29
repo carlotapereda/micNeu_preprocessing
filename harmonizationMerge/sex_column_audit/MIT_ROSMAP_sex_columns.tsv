@@ -1,0 +1,3 @@
+dataset	column	non_null	null	unique_raw	top_raw_values	normalized_counts
+MIT_ROSMAP	msex	1807427	0	2	1.0=936,155; 0.0=871,272	Male=936,155; Female=871,272
+MIT_ROSMAP	sex	1807427	0	2	male=936,155; female=871,272	Male=936,155; Female=871,272

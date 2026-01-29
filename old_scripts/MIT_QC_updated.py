@@ -8,7 +8,9 @@
 import pandas as pd
 import scanpy as sc
 import matplotlib.pyplot as plt
-
+import os
+import numpy as np
+from scipy.stats import median_abs_deviation  
 
 
 ##################################
@@ -138,13 +140,80 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 
+
+print("🧪 STEP 7 – Calculate QC metrics for MIT_ROSMAP subset...")
+
+adata_subset.var["mt"]   = adata_subset.var_names.str.startswith("MT-")
+adata_subset.var["ribo"] = adata_subset.var_names.str.startswith(("RPS", "RPL"))
+adata_subset.var["hb"]   = adata_subset.var_names.str.contains("^HB[^(P)]")
+
+sc.pp.calculate_qc_metrics(
+    adata_subset,
+    qc_vars=["mt", "ribo", "hb"],
+    inplace=True,
+    percent_top=[20],
+    log1p=True
+)
+print("✅ QC metrics added to adata_subset.obs")
+
+# -------------------------------
+# STEP 8 – MAD-based outlier filtering
+# -------------------------------
+print("🚧 STEP 8 – Filtering QC outliers (using MAD)...")
+
+def is_outlier(adata, metric: str, nmads: int):
+    M = adata.obs[metric]
+    outlier = (M < np.median(M) - nmads * median_abs_deviation(M)) | (
+        np.median(M) + nmads * median_abs_deviation(M) < M
+    )
+    return outlier
+
+adata_subset.obs["outlier"] = (
+    is_outlier(adata_subset, "log1p_total_counts", 5)
+    | is_outlier(adata_subset, "log1p_n_genes_by_counts", 5)
+    | is_outlier(adata_subset, "pct_counts_in_top_20_genes", 5)
+)
+print("General QC outliers:")
+print(adata_subset.obs.outlier.value_counts())
+
+adata_subset.obs["mt_outlier"] = is_outlier(adata_subset, "pct_counts_mt", 3) | (
+    adata_subset.obs["pct_counts_mt"] > 8
+)
+print("Mitochondrial QC outliers:")
+print(adata_subset.obs.mt_outlier.value_counts())
+
+print(f"Total cells before outlier filtering: {adata_subset.n_obs:,}")
+adata_subset = adata_subset[(~adata_subset.obs.outlier) & (~adata_subset.obs.mt_outlier)].copy()
+print(f"✅ Cells remaining after outlier filtering: {adata_subset.n_obs:,}")
+
+sc.pl.scatter(
+    adata_subset,
+    x="total_counts",
+    y="n_genes_by_counts",
+    color="pct_counts_mt",
+    save="_MITROSMAP_qc_scatter_postmtfilter.pdf"
+)
+print("✅ Saved QC scatter plot (_MITROSMAP_qc_scatter_postmtfilter.pdf)")
+
+# -------------------------------
+# STEP 9 – Cell and gene filters
+# -------------------------------
+print("🔬 STEP 9 – Applying min gene / min cell thresholds...")
+
+before_cells = adata_subset.n_obs
+before_genes = adata_subset.n_vars
+sc.pp.filter_cells(adata_subset, min_genes=200)
+sc.pp.filter_genes(adata_subset, min_cells=10)
+print(f"✅ Removed {before_cells - adata_subset.n_obs:,} cells and "
+      f"{before_genes - adata_subset.n_vars:,} genes.")
+print(f"✅ Final QC-filtered shape: {adata_subset.shape}")
+
+
 ##################################
 # SAVE OBJECT
 ##################################
-
-#Save object
-adata_subset = filtered_adata.copy()
-adata_subset.write_h5ad('PFC_filtered_apoe.h5ad')
-
+print("💾 STEP 10 – Saving final filtered MIT_ROSMAP AnnData...")
+adata_subset.write_h5ad("PFC_filtered_apoe_QC.h5ad")
+print("🎉 Saved PFC_filtered_apoe_QC.h5ad with QC and outlier filtering applied.")
 
 

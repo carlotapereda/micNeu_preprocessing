@@ -1,0 +1,44 @@
+Fujita and MIT: 
+- individualID (Fujita + MIT)
+- projid (Fujita + MIT)
+- msex (Fujita + MIT)
+- educ  (Fujita + MIT)
+- race (Fujita + MIT)
+- apoe_genotype (Fujita + MIT)
+- age_death (Fujita + MIT)
+- cts_mmse30_lv (Fujita + MIT)
+- pmi (Fujita + MIT)
+- braaksc (Fujita + MIT)
+- ceradsc (Fujita + MIT)
+- cogdx (Fujita + MIT)
+- pct_counts_mt (Fujita + MIT)
+- total_counts (Fujita + MIT)
+- celltypist_cell_label (Fujita + MIT)
+- predicted_doublets (Fujita + MIT)
+- doublet_scores (Fujita + MIT)
+- batch (only MIT)
+- Study (Fujita + MIT)
+
+SEAAD equivalent
+- APOE Genotype
+- Age at Death
+- Braak
+- CERAD score
+- Cognitive Status
+- Donor ID
+- sample_id
+- Last MMSE Score
+- PMI: category
+- Sex: category
+- Years of education
+- Primary Study Name
+- Secondary Study Name
+- Race (choice=Asian)
+- Race (choice=Native Hawaiian or Pacific Islander): category
+- Race (choice=Other)
+- Race (choice=Unknown or unreported)
+- Race (choice=White)
+- celltypist_cell_label 
+- predicted_doublets 
+- doublet_scores 
+- load_name

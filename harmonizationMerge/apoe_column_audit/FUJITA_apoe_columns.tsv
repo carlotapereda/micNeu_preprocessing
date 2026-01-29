@@ -1,0 +1,2 @@
+dataset	column	non_null	null	unique	top_raw_values	normalized_apoe	e4_dosage_counts
+FUJITA	apoe_genotype	1304391	0	3	33.0=920,724; 34.0=361,643; 44.0=22,024	E3/E3=920,724; E3/E4=361,643; E4/E4=22,024	0=920,724; 1=361,643; 2=22,024

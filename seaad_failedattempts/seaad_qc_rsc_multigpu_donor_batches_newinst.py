@@ -34,7 +34,7 @@ OUT_ZARR   = f"{DATA_DIR}/SEAAD_qc_singlets.zarr"
 
 DONOR_KEY        = "Donor ID"
 ROW_CHUNK        = 4000
-TEST_MAX_CELLS   = 50000      # <-- run on 50k cells only
+TEST_MAX_CELLS   = None      # <-- run on 50k cells only
 SCRUBLET_PCS     = 15
 SCRUBLET_SIMR    = 2.0
 SCRUBLET_RATE    = 0.045

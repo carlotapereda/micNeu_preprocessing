@@ -1,6 +1,10 @@
 #merge MIT ROSMAP metadata
 
+import os
+import sys
+from datetime import datetime
 import pandas as pd
+import scanpy as sc
 
 ############################
 # SETUP LOGGING
@@ -68,19 +72,37 @@ print(f"Saved cleaned indiv_bc to {indiv_bc_path}")
 ###########################
 # BARCODE PRESENCE CHECKS
 ###########################
-if 'adata' in locals():
-    are_all_present = indiv_bc_raw['Mathys_Cell_2023'].isin(adata.obs.index).all()
-    print("All indiv_bc_raw['Mathys_Cell_2023'] present in adata.obs['barcode']:", are_all_present)
 
-    present = indiv_bc_raw['Mathys_Cell_2023'].isin(adata.obs['barcode'])
+###########################
+# LOAD ADATA (optional check)
+###########################
+adata_path = "/mnt/data/mit_pfc_mathysCell2023/PFC427_raw_data.h5ad"
+if os.path.exists(adata_path):
+    print(f"🔹 Loading AnnData object from {adata_path} in backed mode...")
+    adata = sc.read_h5ad(adata_path, backed="r")
+    print(f"Loaded backed AnnData with shape: {adata.shape}")
+else:
+    print(f"⚠️ AnnData file not found at {adata_path}, skipping barcode checks.")
+    adata = None  # ensure defined
+
+###########################
+# BARCODE PRESENCE CHECKS
+###########################
+if adata is not None:
+    adata_barcodes = adata.obs_names
+
+    are_all_present = indiv_bc_raw['Mathys_Cell_2023'].isin(adata_barcodes).all()
+    print("All indiv_bc_raw['Mathys_Cell_2023'] present in adata.obs_names:", are_all_present)
+
+    present = indiv_bc_raw['Mathys_Cell_2023'].isin(adata_barcodes)
     num_present, num_not_present = present.sum(), (~present).sum()
-    print("Barcodes present in adata.obs['barcode']:", num_present)
+    print("Barcodes present in adata.obs_names:", num_present)
     print("Barcodes not present:", num_not_present)
 
-    are_all_present = adata.obs['barcode'].isin(indiv_bc_raw['Mathys_Cell_2023']).all()
-    print("All adata.obs['barcode'] present in indiv_bc_raw['Mathys_Cell_2023']:", are_all_present)
+    are_all_present = pd.Index(adata_barcodes).isin(indiv_bc_raw['Mathys_Cell_2023']).all()
+    print("All adata.obs_names present in indiv_bc_raw['Mathys_Cell_2023']:", are_all_present)
 
-    present = adata.obs['barcode'].isin(indiv_bc_raw['Mathys_Cell_2023'])
+    present = pd.Index(adata_barcodes).isin(indiv_bc_raw['Mathys_Cell_2023'])
     num_present, num_not_present = present.sum(), (~present).sum()
     print("Barcodes present in indiv_bc_raw['Mathys_Cell_2023']:", num_present)
     print("Barcodes not present:", num_not_present)

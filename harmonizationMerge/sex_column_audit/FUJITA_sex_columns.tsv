@@ -1,0 +1,2 @@
+dataset	column	non_null	null	unique_raw	top_raw_values	normalized_counts
+FUJITA	msex	1304391	0	2	0.0=845,466; 1.0=458,925	Female=845,466; Male=458,925

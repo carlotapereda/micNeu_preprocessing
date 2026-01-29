@@ -1,0 +1,3 @@
+dataset	column	non_null	null	unique_raw	top_raw_values	normalized_counts
+SEAAD	Gender	1084555	0	2	female=603,171; male=481,384	Female=603,171; Male=481,384
+SEAAD	Sex	1084555	0	2	female=594,315; male=490,240	Female=594,315; Male=490,240
