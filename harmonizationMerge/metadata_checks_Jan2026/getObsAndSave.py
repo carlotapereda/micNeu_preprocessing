@@ -31,7 +31,7 @@ with open(out_path, "w") as f:
 
     write_obs_summary(
         "FUJITA",
-        "../../celltypist/fujita_celltypist_GPU_counts_only.h5ad"
+        "./fujita_final_with_correct_QC.h5ad"
     )
 
 print(f"✅ Saved obs column summaries to {out_path}")
