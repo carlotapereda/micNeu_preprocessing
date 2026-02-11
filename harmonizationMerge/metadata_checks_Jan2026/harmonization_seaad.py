@@ -36,7 +36,21 @@ KEEP_COLS = [
     "celltypist_conf_score", "method"
 ]
 
+# Ensure we only keep columns that actually exist in the file
 obs = obs[[c for c in KEEP_COLS if c in obs.columns]]
+
+############################################
+# [SEA-AD] Create barcode column 
+# MUST DO THIS BEFORE RENAMING sample_id
+############################################
+
+# Use sample_id (the ACGT sequence + suffix) to create unique barcodes
+if "sample_id" in obs.columns:
+    obs["raw_barcode"] = obs["sample_id"].astype(str)
+    obs["barcode"] = "SEA-AD_" + obs["raw_barcode"]
+    obs.index = obs["barcode"]
+else:
+    print("⚠️ Warning: 'sample_id' not found. Barcodes may be incorrect.")
 
 ############################################
 # [SEA-AD] Change SEA-AD column names to match ROSMAP naming
@@ -60,7 +74,6 @@ RENAME_MAP = {
 obs = obs.rename(columns=RENAME_MAP)
 
 # --- CRITICAL FIX: Ensure MMSE is numeric BEFORE copying ---
-# This ensures that both cts_mmse30_lv and Last_MMSE are identical floats
 if "cts_mmse30_lv" in obs.columns:
     obs["cts_mmse30_lv"] = pd.to_numeric(obs["cts_mmse30_lv"], errors='coerce')
 
@@ -93,11 +106,10 @@ obs = obs.drop(
 ############################################
 # [SEA-AD] Create new column called “Study”
 ############################################
-obs["Study"] = (
-    obs["Primary Study Name"].astype(str)
-    + " "
-    + obs["Secondary Study Name"].astype(str)
-)
+# Fill NaNs with empty string to avoid "nan nan" strings
+p_study = obs["Primary Study Name"].fillna("").astype(str)
+s_study = obs["Secondary Study Name"].fillna("").astype(str)
+obs["Study"] = (p_study + " " + s_study).str.strip()
 
 obs = obs.drop(columns=["Primary Study Name", "Secondary Study Name"], errors="ignore")
 
@@ -108,8 +120,8 @@ BRAAK_MAP = {
     "Braak 0": 0, "Braak I": 1, "Braak II": 2, "Braak III": 3,
     "Braak IV": 4, "Braak V": 5, "Braak VI": 6,
 }
-# Map to new column while keeping the categorical 'braaksc'
-obs["Braak"] = obs["braaksc"].map(BRAAK_MAP)
+# Use .str.strip() to prevent mismatches from hidden whitespace
+obs["Braak"] = obs["braaksc"].astype(str).str.strip().map(BRAAK_MAP)
 
 ############################################
 # [SEA-AD] Create column called CERAD (Numeric)
@@ -117,8 +129,7 @@ obs["Braak"] = obs["braaksc"].map(BRAAK_MAP)
 CERAD_MAP = {
     "Absent": 4, "Sparse": 3, "Moderate": 2, "Frequent": 1,
 }
-# Map to new column while keeping the categorical 'ceradsc'
-obs["CERAD"] = obs["ceradsc"].map(CERAD_MAP)
+obs["CERAD"] = obs["ceradsc"].astype(str).str.strip().map(CERAD_MAP)
 
 ############################################
 # [SEA-AD] Copy columns under new names (keep both)
@@ -130,7 +141,7 @@ COPY_MAP = {
     "race": "Race",
     "apoe_genotype": "APOE_Genotype",
     "age_death": "Age_Death",
-    "cts_mmse30_lv": "Last_MMSE", # Copies the now-numeric value
+    "cts_mmse30_lv": "Last_MMSE",
     "cogdx": "Cognitive_Status",
 }
 
@@ -144,23 +155,18 @@ for src, dst in COPY_MAP.items():
 obs["Dataset"] = "SEA-AD"
 
 ############################################
-# [SEA-AD] Create barcode column
-############################################
-obs.index = obs.index.astype(str)
-obs["raw_barcode"] = obs.index
-obs["barcode"] = obs["Dataset"] + "_" + obs.index
-
-############################################
 # Save
 ############################################
 print("💾 Saving harmonized obs...")
-obs.to_csv("SEAAD_harmonized_obs.csv", index=False)
+# It is usually safer to include index=True if your index is the barcode
+obs.to_csv("SEAAD_harmonized_obs.csv", index=True)
 
 ############################################
-# Print summary to verify MMSE is numeric and non-zero
+# Print summary to verify
 ############################################
-summary_df = obs[["cts_mmse30_lv", "Last_MMSE"]].describe()
 print("\n--- Verification of MMSE Harmonization ---")
-print(summary_df)
+if "cts_mmse30_lv" in obs.columns:
+    print(obs[["cts_mmse30_lv", "Last_MMSE"]].describe())
 
 print("\n✅ Done.")
+print(f"Final Barcode Sample: {obs.index[0]}")
