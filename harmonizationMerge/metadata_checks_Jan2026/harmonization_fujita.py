@@ -6,7 +6,7 @@ import numpy as np
 # Source
 ############################################
 
-SRC = "../../celltypist/fujita_celltypist_GPU_counts_only.h5ad"
+SRC = "/mnt/data/fujita_final_QC_filtered.h5ad"
 ATLAS_CSV = "cell-annotation.full-atlas.csv"
 
 print("📖 Reading FUJITA AnnData (backed)...")

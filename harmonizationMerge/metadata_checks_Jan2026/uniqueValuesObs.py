@@ -40,7 +40,7 @@ COLUMNS = {
 }
 
 FILES = {
-    "FUJITA": "../../celltypist/fujita_celltypist_GPU_counts_only.h5ad",
+    "FUJITA": "/mnt/data/fujita_final_QC_filtered.h5ad",
     "MIT": "../../celltypist/mit_celltypist_GPU_counts_only.h5ad",
     "SEAAD": "../../celltypist/seaad_celltypist_GPU_counts_only.h5ad",
 }

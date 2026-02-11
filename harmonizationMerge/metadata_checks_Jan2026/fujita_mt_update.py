@@ -5,78 +5,81 @@ import gc
 from scipy.stats import median_abs_deviation
 
 ############################################
-# Config / Inputs
+# Config
 ############################################
 SRC_H5AD = "../../celltypist/fujita_celltypist_GPU_counts_only.h5ad"
-OUTPUT_PATH = "fujita_final_QC_filtered_symbols.h5ad"
+OUTPUT_PATH = "/mnt/data/fujita_final_QC_filtered.h5ad"
+
+# With 121GB RAM, 500k cells per chunk is very safe
+CHUNK_SIZE = 500000 
 
 ############################################
-# 1. Open Source (Backed)
+# 1. Calculate Filter Mask (Backed)
 ############################################
-print(f"📖 Opening {SRC_H5AD} in backed mode...")
-adata = ad.read_h5ad(SRC_H5AD, backed="r")
+print(f"📖 Opening {SRC_H5AD} to calculate metrics...")
+adata_backed = ad.read_h5ad(SRC_H5AD, backed="r")
 
-############################################
-# 2. Fix Metadata in Memory
-############################################
-print("🧬 Recalculating MT/Ribo/HB metrics on Symbols...")
+mt_genes = adata_backed.var_names[adata_backed.var_names.str.startswith("MT-")].tolist()
 
-mt_genes = adata.var_names[adata.var_names.str.startswith("MT-")].tolist()
-ribo_genes = adata.var_names[adata.var_names.str.startswith(("RPS", "RPL"))].tolist()
-hb_genes = adata.var_names[adata.var_names.str.contains("^HB[^(P)]")].tolist()
+# Calculate MT % without loading full matrix
+print("🧬 Calculating MT metrics...")
+obs_calc = adata_backed.obs.copy()
+obs_calc["total_counts_mt"] = np.ravel(adata_backed[:, mt_genes].to_memory().X.sum(axis=1))
+obs_calc["pct_counts_mt"] = (100 * obs_calc["total_counts_mt"] / obs_calc["total_counts"]).fillna(0)
 
-obs_fixed = adata.obs.copy()
-
-# Subset to memory is RAM-safe for just these columns
-print(f"   - Summing {len(mt_genes)} MT, {len(ribo_genes)} Ribo, {len(hb_genes)} HB genes...")
-obs_fixed["total_counts_mt"] = np.ravel(adata[:, mt_genes].to_memory().X.sum(axis=1))
-obs_fixed["total_counts_ribo"] = np.ravel(adata[:, ribo_genes].to_memory().X.sum(axis=1))
-obs_fixed["total_counts_hb"] = np.ravel(adata[:, hb_genes].to_memory().X.sum(axis=1))
-
-print("   - Updating percentages...")
-obs_fixed["pct_counts_mt"] = 100 * obs_fixed["total_counts_mt"] / obs_fixed["total_counts"]
-obs_fixed["pct_counts_ribo"] = 100 * obs_fixed["total_counts_ribo"] / obs_fixed["total_counts"]
-obs_fixed["pct_counts_hb"] = 100 * obs_fixed["total_counts_hb"] / obs_fixed["total_counts"]
-obs_fixed[["pct_counts_mt", "pct_counts_ribo", "pct_counts_hb"]] = obs_fixed[["pct_counts_mt", "pct_counts_ribo", "pct_counts_hb"]].fillna(0)
-
-############################################
-# 3. Outlier Logic
-############################################
 def is_outlier(data, nmads):
     m = np.median(data)
     s = median_abs_deviation(data)
     return (data < m - nmads * s) | (data > m + nmads * s)
 
-mt_mad_outlier = is_outlier(obs_fixed["pct_counts_mt"], 3)
-mt_hard_outlier = obs_fixed["pct_counts_mt"] > 8.0
-obs_fixed["mt_outlier"] = mt_mad_outlier | mt_hard_outlier
-keep_mask = ~obs_fixed["mt_outlier"]
-
-print(f"✂️  Filtering: {obs_fixed['mt_outlier'].sum():,} outliers removed. {keep_mask.sum():,} cells remaining.")
+keep_mask_global = ~(is_outlier(obs_calc["pct_counts_mt"], 3) | (obs_calc["pct_counts_mt"] > 8.0))
+print(f"✂️  Global filtering logic: {keep_mask_global.sum():,} cells to keep.")
 
 ############################################
-# 4. Stream to Disk (Memory Optimized)
+# 2. Chunked Loading (Bypassing Backed-Subsetting)
 ############################################
-# Slice metadata
-obs_cleaned = obs_fixed[keep_mask].copy()
+print(f"🚀 Loading data in chunks of {CHUNK_SIZE} to avoid OOM Killer...")
 
-# Clear the heavy dataframe and run Garbage Collection
-del obs_fixed
-gc.collect() 
+chunks = []
+total_cells = adata_backed.n_obs
 
-# Create the View
-adata_view = adata[keep_mask, :]
-adata_view.obs = obs_cleaned
+for i in range(0, total_cells, CHUNK_SIZE):
+    end = min(i + CHUNK_SIZE, total_cells)
+    print(f"   → Processing block: {i:,} to {end:,}")
+    
+    # Load a raw block into memory
+    adata_chunk = adata_backed[i:end, :].to_memory()
+    
+    # Apply the pre-calculated mask to this chunk
+    chunk_mask = keep_mask_global[i:end]
+    adata_chunk = adata_chunk[chunk_mask, :].copy()
+    
+    # Update metadata for this subset
+    adata_chunk.obs["pct_counts_mt"] = obs_calc["pct_counts_mt"].iloc[i:end][chunk_mask].values
+    adata_chunk.obs["mt_outlier"] = True
+    
+    chunks.append(adata_chunk)
+    gc.collect()
 
-# OPTIONAL: If you have extra layers you don't need, clear them to save huge disk/RAM
-# if "X_pca" in adata_view.layers: del adata_view.layers["X_pca"]
+# Close the backed handle immediately
+adata_backed.file.close()
+del adata_backed
+gc.collect()
 
-print(f"🚀 Streaming filtered data to {OUTPUT_PATH}...")
-# compression='gzip' is essential for EFS storage
-adata_view.write_h5ad(OUTPUT_PATH, compression="gzip")
+############################################
+############################################
+# 3. Final Merge and Save
+############################################
+print("🔗 Merging chunks into final object...")
+# 'inner' join is appropriate here since all chunks have the same genes
+adata_final = ad.concat(chunks, join="inner")
 
-# Final Cleanup
-if hasattr(adata.file, "close"):
-    adata.file.close()
+# Clean up chunk list to free RAM for the write operation
+del chunks
+gc.collect()
 
-print(f"✅ Done! {OUTPUT_PATH} is ready for analysis.")
+print(f"💾 Saving to {OUTPUT_PATH} (with compression)...")
+# With 1.1M cells, this might take a few minutes
+adata_final.write_h5ad(OUTPUT_PATH, compression="gzip")
+
+print(f"✅ Success! Process complete. File: {OUTPUT_PATH}")
